@@ -518,8 +518,7 @@ def _fit_target(
         # The floor is the whole list's, so a later pass cannot erode it.
         floor = entitled_floor(max(len(ordered), int(docs.get("symbols_total") or 0)))
         _trim_symbols(result, name, tgt, ordered, share, floor, collector, record_counts)
-    if docs is not None and isinstance(docs.get("files"), list) and docs["files"]:
-        _trim_files(result, name, tgt, share, collector, record_counts)
+    _trim_files(result, name, tgt, share, collector, record_counts)
 
     def cost() -> int:
         return len(json.dumps(tgt, separators=(",", ":"), default=str))
@@ -572,21 +571,18 @@ def _trim_files(
     unused.
     """
 
+    docs = tgt.get("docs")
+    files = docs.get("files") if isinstance(docs, dict) else None
+    if not isinstance(files, list) or not files:
+        return
+
     def cost() -> int:
         return len(json.dumps(tgt, separators=(",", ":"), default=str))
 
-    docs = tgt["docs"]
-    files = docs["files"]
     floor = entitled_floor(max(len(files), int(docs.get("files_total") or 0)))
     costs = [len(json.dumps(f, separators=(",", ":"), default=str)) for f in files]
     docs["files"] = []
-    base = cost()
-    keep = used = 0
-    for row_cost in costs:
-        if keep >= floor and base + used + row_cost + keep > share:
-            break
-        keep += 1
-        used += row_cost
+    keep = _rows_within(costs, share - cost(), floor)
     docs["files"] = kept = files[:keep]
     if keep == len(files):
         return
@@ -600,6 +596,17 @@ def _trim_files(
             docs["files_omitted"] = docs["files_total"] - len(kept)
     if collector is not None:
         collector.add(f"{name} :: docs.files", files[len(kept) :])
+
+
+def _rows_within(costs: list[int], room: int, floor: int) -> int:
+    """How many leading rows fit in *room* chars with their commas, never fewer than *floor*."""
+    keep = used = 0
+    for row_cost in costs:
+        if keep >= floor and used + row_cost + keep > room:
+            break
+        keep += 1
+        used += row_cost
+    return keep
 
 
 def _trim_symbols(
