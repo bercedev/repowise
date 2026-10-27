@@ -8,6 +8,7 @@ and the duplication detector's polling of :func:`check_cancelled`.
 
 from __future__ import annotations
 
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -97,8 +98,7 @@ def test_detect_clones_bails_when_cancelled():
 
 
 def test_in_process_parse_stops_before_the_next_file_when_cancelled():
-    import asyncio
-
+    from repowise.core.pipeline.parse_pool import PENDING
     from repowise.core.pipeline.phases.ingestion import _parse_in_process
 
     token = CancellationToken()
@@ -106,8 +106,29 @@ def test_in_process_parse_stops_before_the_next_file_when_cancelled():
     set_active_token(token)
 
     fi = SimpleNamespace(path="a.py", abs_path="a.py")
+    results = [PENDING]
     with pytest.raises(PipelineCancelled):
-        asyncio.run(_parse_in_process([(0, (fi, b"x = 1\n"), "")], None))
+        _parse_in_process([(0, (fi, b"x = 1\n"), "")], results, None)
+    assert results == [PENDING]
+
+
+def _hang(_item: str) -> None:
+    while True:
+        time.sleep(1)
+
+
+def test_parse_pool_stops_when_cancelled():
+    from repowise.core.pipeline.parse_pool import PENDING, run_with_deadline
+
+    token = CancellationToken()
+    token.cancel()
+    set_active_token(token)
+
+    # No deadline: without the poll this would wait on the hung task forever.
+    results = [PENDING, PENDING]
+    with pytest.raises(PipelineCancelled):
+        run_with_deadline(_hang, ["a", "b"], 1, results, timeout=None)
+    assert results == [PENDING, PENDING]
 
 
 def test_graph_build_stops_at_the_next_file_when_cancelled(tmp_path):

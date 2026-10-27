@@ -414,7 +414,7 @@ empty. The route still declares only `application/json`.
 Two query parameters repeat across the `code-health` tag, and both change the
 numbers rather than the rows:
 
-- `scope=all` (default) or `production`. `production` drops test files, which
+- `scope=all` (default) or `production`. `production` drops test, tooling, vendored and generated files, which
   lowers every figure without a defect having been found.
 - `counts=everything` (default) or `code_shape`. `code_shape` removes the
   git-derived half of the score, so the figure describes code shape rather than
@@ -437,6 +437,14 @@ workspace entries that are not indexed yet. They are stable and prefixed so
 client routing cannot collide with real ids; passing one to
 `GET /api/search` returns an empty list rather than falling back to the primary
 repo (`routers/search.py`).
+
+`POST /api/repos` on a path that is already registered updates that row, and a
+`url` or `default_branch` the body leaves out keeps its stored value, as with
+`PATCH`. A new row takes an omitted value from the path's registry row, else
+from git: the remote url (credentials removed) and default branch. The schema
+defaults (`""`, `"main"`) fill only what git cannot name. Each index replaces
+both with what git reports (`routers/repos.py`, `crud/repository.py`), so a
+value set by `PATCH` or `POST` holds until the next index whose git names one.
 
 ### 5.4 Pagination
 

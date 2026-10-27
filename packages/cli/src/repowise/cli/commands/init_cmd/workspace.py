@@ -13,7 +13,6 @@ import os
 import sys
 import time
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +67,7 @@ from repowise.core.decision_lanes import record_decision_lanes
 from repowise.core.docs_mode import docs_mode_state_fields
 from repowise.core.generation.styles import DEFAULT_STYLE
 from repowise.core.index_scope import MODEL_COMMAND
+from repowise.core.workspace.update import stamp_workspace_entry
 
 from ._exit import COST_UNCONFIRMED_BUILT, exit_on_gaps
 from ._ingest import structural_generation_config
@@ -110,6 +110,7 @@ def _run_workspace_generation(
     onboarding: bool = True,
     wiki_style: str = DEFAULT_STYLE,
     language: str = "en",
+    reuse_prior_pages: bool = True,
 ) -> list[Any]:
     """Run LLM generation for a single repo in the workspace init flow.
 
@@ -117,6 +118,9 @@ def _run_workspace_generation(
     the user declines the cost gate (caller persists the index without docs);
     other errors propagate so the caller can log per-repo failures without
     aborting the whole workspace run.
+
+    ``reuse_prior_pages=False`` is ``--force``: every page is regenerated
+    instead of reused from the prior run (issue #1089).
     """
     from repowise.core.generation import GenerationConfig
 
@@ -130,6 +134,7 @@ def _run_workspace_generation(
         # No question is asked in the workspace flow, so this only picks up a cap
         # already recorded for this repo (by a single-repo init, or by hand).
         max_file_pages=resolve_max_file_pages(config=load_config(repo_path)),
+        reuse_prior_pages=reuse_prior_pages,
     )
     plans, est = estimate_generation(
         result=result,
@@ -396,8 +401,7 @@ def _ingest_and_generate_repo(repo: Any, idx: int, total: int, ctx: _WorkspaceCt
 
     entry = ctx.ws_config.get_repo(repo.alias)
     if entry is not None:
-        entry.indexed_at = datetime.now(UTC).isoformat()
-        entry.last_commit_at_index = head
+        stamp_workspace_entry(entry, repo.path, head)
 
     write_editor_project_files(
         console,
@@ -506,6 +510,7 @@ def _generate_repo_with_model(
             onboarding=ctx.onboarding,
             wiki_style=ctx.wiki_style,
             language=ctx.language,
+            reuse_prior_pages=not ctx.force,
         )
         result.generated_pages = generated_pages
         # ``result.vector_store`` is set inside the generation call.

@@ -50,6 +50,22 @@ _CORPUS: tuple[tuple[str, str | None, str], ...] = (
     ("src/foo.test.mts", None, "test"),
     ("src/foo.spec.cts", None, "test"),
     ("src/foo.mts", None, ""),
+    # inside a JS-family `src` tree a `tests/` folder is a product feature unless
+    # the file name or another test dir says otherwise; outside `src` it is a
+    # suite, the way Mocha, AVA and `node --test` collect a whole folder
+    ("packages/web/src/app/repos/[id]/tests/page.tsx", None, ""),
+    ("packages/web/src/components/tests/tests-view.tsx", None, ""),
+    ("src/components/tests/TestsView.vue", None, ""),
+    ("Src/Tests/page.svelte", None, ""),
+    ("packages/web/tests/page.tsx", None, "test"),
+    ("src/components/tests/Button.test.tsx", None, "test"),
+    ("src/__tests__/tests/helpers.ts", None, "test"),
+    ("src/tests/__mocks__/api.ts", None, "support"),
+    ("web/src/test/setup.ts", None, "test"),
+    ("tests/foo.test.ts", None, "test"),
+    ("tests/utils.ts", None, "test"),
+    ("test/app.router.js", None, "test"),
+    ("pkg/src/tests/helpers.py", None, "test"),
     # maven / gradle / kotlin multiplatform
     ("src/test/java/Foo.java", None, "test"),
     ("src/it/scala/FooSpec.scala", None, "test"),
@@ -69,7 +85,8 @@ _CORPUS: tuple[tuple[str, str | None, str], ...] = (
     ("src/contests/rules.py", None, ""),
     ("src/Latests/x.cs", None, ""),
     # gradle test fixtures and QA projects (elasticsearch)
-    ("build-tools/src/testFixtures/java/org/x/Fixture.java", None, "test"),
+    ("build-tools/src/testFixtures/java/org/x/Fixture.java", None, "support"),
+    ("build-tools/src/testFixtures/java/org/x/Builder.java", None, "test"),
     ("x-pack/plugin/sql/qa/server/src/main/java/org/x/JdbcBase.java", None, "test"),
     ("qa/logging-spi/src/main/java/org/x/Spi.java", None, "test"),
     ("src/qa/answer.py", None, ""),  # a question-answering module
@@ -108,6 +125,9 @@ _CORPUS: tuple[tuple[str, str | None, str], ...] = (
     ("contest/x.py", None, ""),
     # e2e suites
     ("e2e/login.ts", None, "test"),
+    ("apps/console/e2e/helpers/hydration.ts", "typescript", "support"),
+    ("apps/console/e2e/fixtures.ts", "typescript", "support"),
+    ("apps/console/e2e/specs/login.spec.ts", "typescript", "test"),
     # ...and the `.e2e.` infix beside `.test.`/`.spec.`, suites and their helpers
     ("src/gateway/gateway.e2e.ts", None, "test"),
     ("src/gateway/test-helpers.e2e.ts", None, "test"),
@@ -146,6 +166,11 @@ _CORPUS: tuple[tuple[str, str | None, str], ...] = (
     # still needs a test tree around it
     ("fixtures/data.yml", None, ""),
     ("app/fixtures/premier_league.py", None, ""),
+    ("src/fixtures.ts", None, ""),
+    ("src/fixtures.ts", "typescript", ""),
+    ("src/fixtures.py", None, ""),
+    ("src/fixtures.py", "python", ""),
+    ("lib/fixtures.go", None, ""),
     ("src/testdata_loader.py", None, ""),
     ("tests/testdata/golden.json", None, "support"),
     # compound directory names: a segment's words split on - _ . and its last
@@ -294,6 +319,12 @@ _CORPUS: tuple[tuple[str, str | None, str], ...] = (
     ("src/media-understanding/runner.test-mocks.ts", None, "support"),
     ("extensions/comfy/test-helpers.ts", None, "support"),
     ("src/cron/isolated-agent.test-setup.ts", None, "support"),
+    # #3269: a module's own ``.test-*`` companion, beside it in src/.
+    ("src/foo.test-support.ts", None, "support"),
+    ("src/foo.test-helpers.ts", None, "support"),
+    ("src/foo.test-utils.ts", None, "support"),
+    ("src/foo.test-utils.js", None, "support"),
+    ("src/test-supporter.ts", None, ""),
     # ``test-utils`` is a published entry in React and Preact; ``setup`` alone
     # is a build script or an app's bootstrap.
     ("src/test-utils.ts", None, ""),
@@ -358,6 +389,8 @@ def test_degenerate_paths_are_not_tests(path: str) -> None:
     [
         ("tests/x.py", True),
         ("src/__mocks__/api.ts", True),
+        ("packages/web/src/components/tests/tests-view.tsx", False),
+        ("pkg/src/tests/helpers.py", True),
         ("pkg/tests/helpers/db.py", True),
         ("packages/core/src/pkg/core/test_selection.py", False),
         ("src/bot.test-harness.ts", False),
